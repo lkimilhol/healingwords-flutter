@@ -25,10 +25,10 @@ class _ImageQuoteWithDynamicBackgroundState
   final List<Map<String, String>> items = [
     {
       "image": "assets/KakaoTalk_Photo_2024-12-01-17-49-23.jpeg", // 로컬 이미지 경로
-      "quote": "This is a sample quote for this image.",
+      "quote": "This is a sample quote for this image. This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.",
     },
     {
-      "image": "assets/KakaoTalk_Photo_2024-12-01-17-49-24.jpeg", // 다른 로컬 이미지
+      "image": "assets/KakaoTalk_Photo_2024-12-01-18-03-15.jpeg", // 다른 로컬 이미지
       "quote": "Another sample quote for another image.",
     },
   ];
