@@ -1,125 +1,135 @@
 import 'package:flutter/material.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: ImageQuoteWithDynamicBackground(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class ImageQuoteWithDynamicBackground extends StatefulWidget {
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _ImageQuoteWithDynamicBackgroundState createState() =>
+      _ImageQuoteWithDynamicBackgroundState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _ImageQuoteWithDynamicBackgroundState
+    extends State<ImageQuoteWithDynamicBackground> {
+  final List<Map<String, String>> items = [
+    {
+      "image": "assets/KakaoTalk_Photo_2024-12-01-17-49-23.jpeg", // 로컬 이미지 경로
+      "quote": "This is a sample quote for this image.",
+    },
+    {
+      "image": "assets/KakaoTalk_Photo_2024-12-01-17-49-24.jpeg", // 다른 로컬 이미지
+      "quote": "Another sample quote for another image.",
+    },
+  ];
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  int currentIndex = 0;
+  Color backgroundColor = Colors.black; // 기본 배경 색상
+  Color textColor = Colors.white; // 기본 글귀 색상
+  ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // 초기 색 추출
+    _updateColors(items[currentIndex]['image']!);
+
+    // ScrollController에 리스너 추가
+    _scrollController.addListener(() {
+      // 스크롤이 끝에 도달했을 때
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        showNextItem();
+      }
     });
+  }
+
+  void showNextItem() {
+    setState(() {
+      currentIndex = (currentIndex + 1) % items.length;
+    });
+    _updateColors(items[currentIndex]['image']!);
+  }
+
+  Future<void> _updateColors(String imagePath) async {
+    final PaletteGenerator palette = await PaletteGenerator.fromImageProvider(
+      AssetImage(imagePath),
+    );
+
+    // 주요 색 추출 (예시: 이미지에서 가장 우세한 색)
+    final dominantColor = palette.dominantColor?.color ?? Colors.black;
+
+    // 배경색을 주요 색으로 설정
+    setState(() {
+      backgroundColor = dominantColor;
+
+      // 배경색에 맞춰 글귀 색상 결정 (배경이 어두우면 글귀는 밝게, 그 반대)
+      textColor = _getContrastingColor(dominantColor);
+    });
+  }
+
+  Color _getContrastingColor(Color color) {
+    // 배경색이 어두운지 밝은지 체크하고 대비되는 색 반환
+    double brightness = (0.2126 * color.red + 0.7152 * color.green + 0.0722 * color.blue) / 255;
+    return brightness < 0.5 ? Colors.white : Colors.black;
+  }
+
+  @override
+  void dispose() {
+    // ScrollController 해제
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final currentItem = items[currentIndex];
+
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      // 전체 화면 배경 설정
+      backgroundColor: backgroundColor, // Scaffold의 배경색을 전체적으로 설정
+      body: ListView(
+        controller: _scrollController, // ScrollController 추가
+        children: [
+          // 배경 이미지
+          Image.asset(
+            currentItem['image']!,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: MediaQuery.of(context).size.height * 0.5,
+          ),
+          // 텍스트가 포함된 배경 영역
+          Container(
+            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            color: backgroundColor, // 배경 색상
+            child: Column(
+              children: [
+                // 글귀 텍스트
+                Text(
+                  currentItem['quote']!,
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: textColor, // 글귀 색상
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
