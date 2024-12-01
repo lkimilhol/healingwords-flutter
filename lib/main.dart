@@ -36,22 +36,12 @@ class _ImageQuoteWithDynamicBackgroundState
   int currentIndex = 0;
   Color backgroundColor = Colors.black; // 기본 배경 색상
   Color textColor = Colors.white; // 기본 글귀 색상
-  ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     // 초기 색 추출
     _updateColors(items[currentIndex]['image']!);
-
-    // ScrollController에 리스너 추가
-    _scrollController.addListener(() {
-      // 스크롤이 끝에 도달했을 때
-      if (_scrollController.position.pixels ==
-          _scrollController.position.maxScrollExtent) {
-        showNextItem();
-      }
-    });
   }
 
   void showNextItem() {
@@ -85,50 +75,58 @@ class _ImageQuoteWithDynamicBackgroundState
   }
 
   @override
-  void dispose() {
-    // ScrollController 해제
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final currentItem = items[currentIndex];
 
     return Scaffold(
       // 전체 화면 배경 설정
       backgroundColor: backgroundColor, // Scaffold의 배경색을 전체적으로 설정
-      body: ListView(
-        controller: _scrollController, // ScrollController 추가
-        children: [
-          // 배경 이미지
-          Image.asset(
-            currentItem['image']!,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: MediaQuery.of(context).size.height * 0.5,
-          ),
-          // 텍스트가 포함된 배경 영역
-          Container(
-            padding: const EdgeInsets.all(16),
-            width: double.infinity,
-            color: backgroundColor, // 배경 색상
-            child: Column(
-              children: [
-                // 글귀 텍스트
-                Text(
-                  currentItem['quote']!,
-                  style: TextStyle(
-                    fontSize: 20,
-                    color: textColor, // 글귀 색상
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
+      body: NotificationListener<ScrollEndNotification>(
+        onNotification: (notification) {
+          // 스크롤이 끝까지 내려갔는지 확인
+          print('Current Pixel: ${notification.metrics.pixels}');
+          print('Max Pixel: ${notification.metrics.maxScrollExtent}');
+
+          // 끝까지 스크롤이 내려갔으면 다음 항목으로
+          if (notification.metrics.pixels == notification.metrics.maxScrollExtent) {
+            print('Reached the bottom, loading next item');
+            showNextItem();
+          }
+          return true;
+        },
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // 배경 이미지
+              Image.asset(
+                currentItem['image']!,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: MediaQuery.of(context).size.height * 0.5,
+              ),
+              // 텍스트가 포함된 배경 영역
+              Container(
+                padding: const EdgeInsets.all(16),
+                width: double.infinity,
+                color: backgroundColor, // 배경 색상
+                child: Column(
+                  children: [
+                    // 글귀 텍스트
+                    Text(
+                      currentItem['quote']!,
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: textColor, // 글귀 색상
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
