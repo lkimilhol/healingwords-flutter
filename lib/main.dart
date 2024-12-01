@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(MyApp());
@@ -9,46 +11,70 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: ImageQuoteWithDynamicBackground(),
+      home: ImageWordsWithDynamicBackground(),
     );
   }
 }
 
-class ImageQuoteWithDynamicBackground extends StatefulWidget {
+class ImageWordsWithDynamicBackground extends StatefulWidget {
   @override
-  _ImageQuoteWithDynamicBackgroundState createState() =>
-      _ImageQuoteWithDynamicBackgroundState();
+  _ImageWordsWithDynamicBackgroundState createState() =>
+      _ImageWordsWithDynamicBackgroundState();
 }
 
-class _ImageQuoteWithDynamicBackgroundState
-    extends State<ImageQuoteWithDynamicBackground> {
-  final List<Map<String, String>> items = [
-    {
-      "image": "assets/KakaoTalk_Photo_2024-12-01-17-49-23.jpeg", // 로컬 이미지 경로
-      "quote": "This is a sample quote for this image. This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.This is a sample quote for this image.",
-    },
-    {
-      "image": "assets/KakaoTalk_Photo_2024-12-01-18-03-15.jpeg", // 다른 로컬 이미지
-      "quote": "Another sample quote for another image.",
-    },
-  ];
-
+class _ImageWordsWithDynamicBackgroundState
+    extends State<ImageWordsWithDynamicBackground> {
+  List<Map<String, String>> items = [];
   int currentIndex = 0;
   Color backgroundColor = Colors.black; // 기본 배경 색상
   Color textColor = Colors.white; // 기본 글귀 색상
+  bool isLoading = false;
+  ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     // 초기 색 추출
-    _updateColors(items[currentIndex]['image']!);
+    _loadData();
+
+    // ScrollController에 리스너 추가
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+        _loadData();  // 스크롤이 끝에 도달하면 추가 데이터를 로드
+      }
+    });
   }
 
-  void showNextItem() {
+  // API 호출을 통해 데이터 로드
+  Future<void> _loadData() async {
+    if (isLoading) return;  // 이미 로딩 중이면 추가 요청을 하지 않음
     setState(() {
-      currentIndex = (currentIndex + 1) % items.length;
+      isLoading = true;
     });
-    _updateColors(items[currentIndex]['image']!);
+
+    try {
+      final response = await http.get(Uri.parse('https://yourapiurl.com/getItems'));
+
+      if (response.statusCode == 200) {
+        List<Map<String, String>> newItems = List<Map<String, String>>.from(
+            json.decode(response.body).map((item) => {
+              "image": item['image'],
+              "words": item['words'],
+            }));
+        setState(() {
+          items.addAll(newItems);  // 새 데이터를 리스트에 추가
+          currentIndex = items.length - 1;
+        });
+      } else {
+        throw Exception('Failed to load data');
+      }
+    } catch (e) {
+      print('Error loading data: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   Future<void> _updateColors(String imagePath) async {
@@ -56,77 +82,63 @@ class _ImageQuoteWithDynamicBackgroundState
       AssetImage(imagePath),
     );
 
-    // 주요 색 추출 (예시: 이미지에서 가장 우세한 색)
     final dominantColor = palette.dominantColor?.color ?? Colors.black;
-
-    // 배경색을 주요 색으로 설정
     setState(() {
       backgroundColor = dominantColor;
-
-      // 배경색에 맞춰 글귀 색상 결정 (배경이 어두우면 글귀는 밝게, 그 반대)
       textColor = _getContrastingColor(dominantColor);
     });
   }
 
   Color _getContrastingColor(Color color) {
-    // 배경색이 어두운지 밝은지 체크하고 대비되는 색 반환
     double brightness = (0.2126 * color.red + 0.7152 * color.green + 0.0722 * color.blue) / 255;
     return brightness < 0.5 ? Colors.white : Colors.black;
   }
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final currentItem = items[currentIndex];
+    final currentItem = items.isNotEmpty ? items[currentIndex] : null;
 
     return Scaffold(
-      // 전체 화면 배경 설정
-      backgroundColor: backgroundColor, // Scaffold의 배경색을 전체적으로 설정
-      body: NotificationListener<ScrollEndNotification>(
-        onNotification: (notification) {
-          // 스크롤이 끝까지 내려갔는지 확인
-          print('Current Pixel: ${notification.metrics.pixels}');
-          print('Max Pixel: ${notification.metrics.maxScrollExtent}');
+      backgroundColor: backgroundColor,
+      body: ListView.builder(
+        controller: _scrollController,
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
 
-          // 끝까지 스크롤이 내려갔으면 다음 항목으로
-          if (notification.metrics.pixels == notification.metrics.maxScrollExtent) {
-            print('Reached the bottom, loading next item');
-            showNextItem();
-          }
-          return true;
-        },
-        child: SingleChildScrollView(
-          child: Column(
+          return Column(
             children: [
-              // 배경 이미지
-              Image.asset(
-                currentItem['image']!,
+              // 이미지
+              Image.network(
+                item['image']!,  // 서버에서 받아온 이미지 URL 사용
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: MediaQuery.of(context).size.height * 0.5,
               ),
-              // 텍스트가 포함된 배경 영역
+              // 글귀
               Container(
                 padding: const EdgeInsets.all(16),
                 width: double.infinity,
-                color: backgroundColor, // 배경 색상
-                child: Column(
-                  children: [
-                    // 글귀 텍스트
-                    Text(
-                      currentItem['quote']!,
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: textColor, // 글귀 색상
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                color: backgroundColor,
+                child: Text(
+                  item['words']!,
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
